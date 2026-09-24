@@ -681,12 +681,19 @@
 <!-- ===== Center wrapper ===== -->
 <div class="center-wrapper w-100 d-flex flex-column align-items-center justify-content-center min-vh-100 position-relative z-3">
 
-    <%-- Error message --%>
-    <% if (request.getParameter("error") != null) { %>
-    <div class="alert alert-danger alert-card mx-auto rounded-4 text-center py-2" role="alert">
-        Invalid username or password.
-    </div>
-    <% } %>
+        <%-- Error message --%>
+        <% if (request.getParameter("error") != null) { %>
+        <div class="alert alert-danger alert-card mx-auto rounded-4 text-center py-2" role="alert">
+            Invalid username or password.
+        </div>
+        <% } %>
+
+        <%-- Logout message --%>
+        <% if (request.getParameter("logout") != null) { %>
+        <div class="alert alert-success alert-card mx-auto rounded-4 text-center py-2" role="alert">
+            You have been logged out successfully.
+        </div>
+        <% } %>
 
     <div class="privilege-card w-100 mx-auto position-relative overflow-hidden">
         <div class="deco-circle-1 position-absolute rounded-circle z-0"></div>
@@ -790,8 +797,7 @@
                 </button>
 
                 <div class="d-flex justify-content-center gap-2 mb-3" style="font-size:12px;">
-                    <a href="${pageContext.request.contextPath}/login"
-                       class="link-muted text-decoration-none">Reset</a>
+                    <a href="${pageContext.request.contextPath}/loginForm" class="link-muted text-decoration-none">Reset</a>
                 </div>
 
                 <div class="d-flex align-items-center gap-2 mb-3">

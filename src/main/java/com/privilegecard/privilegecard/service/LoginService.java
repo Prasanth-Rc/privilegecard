@@ -3,11 +3,8 @@ package com.privilegecard.privilegecard.service;
 import com.privilegecard.privilegecard.entity.LoginUser;
 import com.privilegecard.privilegecard.entity.MenuContent;
 import com.privilegecard.privilegecard.repository.LoginUserRepository;
-
 import org.springframework.stereotype.Service;
 
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
 import java.util.List;
 
 @Service
@@ -20,34 +17,15 @@ public class LoginService {
     }
 
     /* ============================================================
-     * AUTHENTICATION
+     * Used by ErpAuthSuccessHandler — load user + menus
      * ============================================================ */
+    public LoginUser loadWithMenus(String aliasName) {
 
-    /**
-     * Authenticate a user.
-     *
-     * @param username    the alias name
-     * @param rawPassword the plain password from the form
-     * @return LoginUser (with menus loaded) if valid, null otherwise
-     */
-    public LoginUser authenticate(String username, String rawPassword) {
+        if (aliasName == null || aliasName.isBlank()) return null;
 
-        if (username == null || username.isBlank()) {
-            return null;
-        }
+        LoginUser user = loginUserRepository.findByAlias(aliasName);
+        if (user == null) return null;
 
-//        String hashedPassword = md5Triple(rawPassword);
-
-        List<LoginUser> users =
-                loginUserRepository.findByAliasNameNative(username, rawPassword);
-
-        if (users == null || users.isEmpty()) {
-            return null;
-        }
-
-        LoginUser user = users.get(0);
-
-        // Load menus
         List<MenuContent> menus =
                 loginUserRepository.findMenusNative(user.getEmployeeId());
         user.setMenus(menus);
@@ -58,7 +36,6 @@ public class LoginService {
     /* ============================================================
      * AUDIT LOGGING
      * ============================================================ */
-
     public void recordLogin(LoginUser user, String ipAddress) {
         if (user == null) return;
         loginUserRepository.recordLogin(
@@ -75,27 +52,5 @@ public class LoginService {
                 user.getEmployeeId(),
                 ipAddress
         );
-    }
-
-    /* ============================================================
-     * HELPERS (private)
-     * ============================================================ */
-
-    private String md5Triple(String raw) {
-        try {
-            MessageDigest md = MessageDigest.getInstance("MD5");
-            byte[] bytes = raw.getBytes(StandardCharsets.UTF_8);
-            for (int i = 0; i < 3; i++) {
-                bytes = md.digest(bytes);
-                md.reset();
-            }
-            StringBuilder sb = new StringBuilder(32);
-            for (byte b : bytes) {
-                sb.append(String.format("%02x", b));
-            }
-            return sb.toString();
-        } catch (Exception e) {
-            throw new IllegalStateException("MD5 not available", e);
-        }
     }
 }

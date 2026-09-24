@@ -3,7 +3,6 @@
   User: ADMIN
   Date: 18-09-2026
   Time: 16:12
-  To change this template use File | Settings | File Templates.
 --%>
 <%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8" %>
 <%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c" %>
@@ -16,9 +15,9 @@
     <link rel="stylesheet" href="${pageContext.request.contextPath}/css/icons.min.css">
     <link rel="stylesheet" href="${pageContext.request.contextPath}/bootstrapcss/responsive.bootstrap5.min.css">
     <link rel="stylesheet" href="${pageContext.request.contextPath}/css/style.css">
-
 </head>
 <body>
+
 <!-- ================= TOPBAR ================= -->
 <div class="topbar">
     <div class="brand">
@@ -42,13 +41,30 @@
             <p class="user-name">${loginUser.employeeName}</p>
             <p class="user-role">${loginUser.designationName} &bull; ${loginUser.officeName}</p>
         </div>
-        <a href="${pageContext.request.contextPath}/logout" class="logout-btn" title="Log out">
-            <i class="mdi mdi-logout"></i>
-        </a>
+
+        <%-- ============================================================
+             LOGOUT — must be POST + CSRF for Spring Security
+             ============================================================ --%>
+        <form action="${pageContext.request.contextPath}/logout"
+              method="post"
+              class="m-0 d-inline">
+            <input type="hidden"
+                   name="${_csrf.parameterName}"
+                   value="${_csrf.token}"/>
+            <button type="submit"
+                    class="logout-btn border-0 bg-transparent"
+                    title="Log out">
+                <i class="mdi mdi-logout"></i>
+            </button>
+        </form>
     </div>
 </div>
 
-<input type="hidden" name="${_csrf.parameterName}" value="${_csrf.token}"/>
+<%-- ============================================================
+     CSRF meta tags for any JS that needs them later
+     ============================================================ --%>
+<meta name="_csrf"        content="${_csrf.token}"/>
+<meta name="_csrf_header" content="${_csrf.headerName}"/>
 
 </body>
 

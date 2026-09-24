@@ -8,12 +8,26 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Core ERP&reg; Dashboard</title>
 
+    <%-- ============================================================
+         CSRF TOKEN #1 — expose as meta tags so JS can read them
+         (used by the dynamic /page form and any future AJAX calls)
+         ============================================================ --%>
+    <meta name="_csrf"        content="${_csrf.token}"/>
+    <meta name="_csrf_header" content="${_csrf.headerName}"/>
 </head>
 <body>
 
+<%-- ============================================================
+     CSRF TOKEN #2 — global hidden input, useful if you ever need
+     to inject the token into a form via JS with $('input[name=_csrf]')
+     ============================================================ --%>
+<input type="hidden" id="globalCsrfToken"
+       name="${_csrf.parameterName}"
+       value="${_csrf.token}"/>
+
 <div class="layout">
 
-    <!-- ================= SIDEBAR (3-level dynamic) ================= -->
+    <!-- ================= SIDEBAR ================= -->
     <div class="sidebar overflow-auto">
         <p class="side-title">Main Menu</p>
 
@@ -30,16 +44,7 @@
 
             <div class="collapse" id="mainGroup${mainEntry.key}">
                 <c:forEach var="subEntry" items="${mainEntry.value.subs}">
-                    <%--
-                        A SubGroup always has at least one entry in "popups"
-                        (the controller adds the row unconditionally), but when
-                        there is no real 3rd-level menu, popupMenuId comes back
-                        as 0 from the DB (COALESCE(pm.menuid,0)). So we check
-                        the FIRST popup's id to decide whether this sub-menu is
-                        really a folder of popups, or just a leaf itself.
-                    --%>
                     <c:choose>
-                        <%-- Sub menu WITH real popups → toggle folder --%>
                         <c:when test="${not empty subEntry.value.popups and subEntry.value.popups[0].popupMenuId != 0}">
                             <a class="side-link side-toggle sub-toggle"
                                data-bs-toggle="collapse"
@@ -63,8 +68,6 @@
                                 </c:forEach>
                             </div>
                         </c:when>
-
-                        <%-- Sub menu WITHOUT popups → itself is the clickable leaf --%>
                         <c:otherwise>
                             <a href="#"
                                class="side-link sub-toggle js-page-link ${subEntry.key eq currentMenu ? 'active' : ''}"
@@ -81,9 +84,21 @@
 
         <p class="side-title" style="margin-top:22px;">Account</p>
         <a href="#" class="side-link"><i class="mdi mdi-face-man-profile"></i> My Profile</a>
-        <a href="${pageContext.request.contextPath}/logout" class="side-link">
-            <i class="mdi mdi-logout"></i> Log Out
-        </a>
+
+        <%-- ============================================================
+             CSRF TOKEN #3 — logout form (POST)
+             ============================================================ --%>
+        <form action="${pageContext.request.contextPath}/logout"
+              method="post"
+              class="m-0">
+            <input type="hidden"
+                   name="${_csrf.parameterName}"
+                   value="${_csrf.token}"/>
+            <button type="submit"
+                    class="side-link border-0 bg-transparent w-100 text-start">
+                <i class="mdi mdi-logout"></i> Log Out
+            </button>
+        </form>
     </div>
 
     <!-- ================= CONTENT ================= -->
@@ -149,16 +164,24 @@
     $(function () {
 
         // ============================================================
-        // Leaf menu click
+        // Read CSRF token from <meta> — safest way for JS
+        // ============================================================
+        var CSRF_TOKEN  = $('meta[name="_csrf"]').attr('content');
+        var CSRF_HEADER = $('meta[name="_csrf_header"]').attr('content');
+
+        // Fallback: if meta isn't present, read from the global hidden input
+        if (!CSRF_TOKEN) {
+            CSRF_TOKEN = $('#globalCsrfToken').val();
+        }
+
+        // ============================================================
+        // CSRF TOKEN #4 — dynamically-built POST form for /page
         // ============================================================
         $(document).on('click', '.js-page-link', function (e) {
             e.preventDefault();
 
             var menuId = $(this).data('menu-id');
-
-            if (!menuId) {
-                return;
-            }
+            if (!menuId) return;
 
             var $form = $('<form>', {
                 method: 'POST',
@@ -171,7 +194,7 @@
                 value: menuId
             }));
 
-            // CSRF token
+            // CSRF token injected into the dynamic form
             $form.append($('<input>', {
                 type: 'hidden',
                 name: '${_csrf.parameterName}',
@@ -179,55 +202,51 @@
             }));
 
             $('body').append($form);
-
             $form.submit();
         });
 
+        // ============================================================
+        // CSRF TOKEN #5 — template for any future AJAX call
+        // ------------------------------------------------------------
+        // Usage:
+        //   $.ajax({
+        //       url: '/somepost',
+        //       type: 'POST',
+        //       headers: csrfHeaders(),
+        //       data: {...}
+        //   });
+        // ============================================================
+        function csrfHeaders() {
+            var h = {};
+            if (CSRF_HEADER && CSRF_TOKEN) {
+                h[CSRF_HEADER] = CSRF_TOKEN;
+            } else if (CSRF_TOKEN) {
+                h['X-CSRF-TOKEN'] = CSRF_TOKEN;  // fallback default header name
+            }
+            return h;
+        }
+        window.csrfHeaders = csrfHeaders;   // expose globally
 
         // ============================================================
-        // Open parent menus when current page is active
+        // Auto-open active menu
         // ============================================================
         var $active = $('.js-page-link.active');
 
         if ($active.length) {
-
             $active.parents('.collapse').each(function () {
-
-                var collapseElement = this;
-
-                var bsCollapse = bootstrap.Collapse.getOrCreateInstance(
-                    collapseElement,
-                    {
-                        toggle: false
-                    }
-                );
-
-                bsCollapse.show();
-
+                bootstrap.Collapse
+                    .getOrCreateInstance(this, { toggle: false })
+                    .show();
             });
-
         } else {
-
-            // Optional: open first main menu
             var first = $('.side-toggle').first();
-
             if (first.length) {
-
                 var target = first.attr('href');
-
                 var collapseElement = document.querySelector(target);
-
                 if (collapseElement) {
-
-                    var bsCollapse = bootstrap.Collapse.getOrCreateInstance(
-                        collapseElement,
-                        {
-                            toggle: false
-                        }
-                    );
-
-                    bsCollapse.show();
-
+                    bootstrap.Collapse
+                        .getOrCreateInstance(collapseElement, { toggle: false })
+                        .show();
                 }
             }
         }
